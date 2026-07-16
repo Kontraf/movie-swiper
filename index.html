@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🍿 Movie Swiper // Match Your Night</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #090514 100%);
+            overflow: hidden;
+            touch-action: none; /* Αποτρέπει το default scroll στο κινητό κατά το swipe */
+        }
+        
+        /* Εφέ στοίβας (Card Stack Effect) */
+        .card-container {
+            position: relative;
+            width: 320px;
+            height: 480px;
+            perspective: 1000px;
+        }
+
+        .movie-card {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background: #111827;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transform-origin: 50% 99%;
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .movie-card:active {
+            cursor: grabbing;
+        }
+
+        /* Gradient overlay πάνω από την αφίσα για να διαβάζεται το κείμενο */
+        .card-overlay {
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.4) 40%, transparent 100%);
+        }
+    </style>
+</head>
+<body class="text-white min-h-screen flex flex-col justify-between p-6">
+
+    <header class="text-center pt-4">
+        <h1 class="text-3xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-400">🍿 MOVIE SWIPER</h1>
+        <p class="text-xs text-slate-400 mt-1 uppercase tracking-widest">Swipe right for YES, left for NO</p>
+    </header>
+
+    <main class="flex-grow flex items-center justify-center">
+        <div class="card-container" id="deck">
+            <div id="no-more-cards" class="hidden text-center p-6">
+                <p class="text-xl font-bold mb-2">🎉 That's all for now!</p>
+                <p class="text-sm text-slate-400 mb-4">You have swiped through all movies.</p>
+                <button onclick="resetDeck()" class="bg-violet-600 hover:bg-violet-700 text-white font-bold py-2 px-6 rounded-full transition">
+                    Start Over
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="flex justify-center gap-6 pb-6 z-10">
+        <button onclick="swipeButton('left')" class="w-16 h-16 rounded-full bg-slate-900/80 border border-red-500/30 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition shadow-lg text-2xl">
+            ✖
+        </button>
+        <button onclick="swipeButton('right')" class="w-16 h-16 rounded-full bg-slate-900/80 border border-green-500/30 flex items-center justify-center text-green-400 hover:bg-green-500 hover:text-white transition shadow-lg text-2xl">
+            ❤
+        </button>
+    </footer>
+
+    <div id="matches-panel" class="fixed bottom-24 left-1/2 -translate-x-1/2 bg-slate-950/95 border border-violet-500/30 rounded-xl p-4 w-80 shadow-2xl transition-all transform scale-0 origin-bottom">
+        <h3 class="font-bold text-violet-400 border-b border-slate-800 pb-2 mb-2 flex justify-between items-center">
+            <span>💚 Your Watchlist</span>
+            <button onclick="toggleMatches()" class="text-xs text-slate-500 hover:text-white">Close</button>
+        </h3>
+        <ul id="matches-list" class="max-h-40 overflow-y-auto space-y-2 text-sm text-slate-300">
+            <li class="italic text-slate-500">No movies saved yet...</li>
+        </ul>
+    </div>
+
+    <div class="fixed bottom-6 right-6">
+        <button onclick="toggleMatches()" class="bg-violet-600 text-white font-semibold py-2 px-4 rounded-full text-xs shadow-lg hover:bg-violet-700 transition">
+            📂 View Watchlist (<span id="match-count">0</span>)
+        </button>
+    </div>
+
+    <script>
+        // Mock Data Ταινιών (Fallback σε περίπτωση που δεν έχουμε API)
+        const movieData = [
+            { id: 1, title: "Dune: Part Two", year: "2024", rating: "8.6", genre: "Sci-Fi / Adventure", image: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500&auto=format&fit=crop&q=60", desc: "Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family." },
+            { id: 2, title: "Oppenheimer", year: "2023", rating: "8.9", genre: "Biography / Drama", image: "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=500&auto=format&fit=crop&q=60", desc: "The story of American scientist J. Robert Oppenheimer and his role in the development of the atomic bomb." },
+            { id: 3, title: "Spider-Man: Across the Spider-Verse", year: "2023", rating: "8.6", genre: "Animation / Action", image: "https://images.unsplash.com/photo-1635805737707-575885ab0820?w=500&auto=format&fit=crop&q=60", desc: "Miles Morales catapults across the Multiverse, where he encounters a team of Spider-People charged with protecting its very existence." },
+            { id: 4, title: "The Dark Knight", year: "2008", rating: "9.0", genre: "Action / Crime", image: "https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?w=500&auto=format&fit=crop&q=60", desc: "When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman must accept one of the greatest psychological and physical tests." },
+            { id: 5, title: "Interstellar", year: "2014", rating: "8.7", genre: "Sci-Fi / Drama", image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=500&auto=format&fit=crop&q=60", desc: "A team of explorers travel through a wormhole in space in an attempt to ensure humanity's survival." }
+        ];
+
+        let activeIndex = 0;
+        let watchlist = [];
+        let isDragging = false;
+        let startX = 0;
+        let currentX = 0;
+        let currentCard = null;
+
+        const deck = document.getElementById('deck');
+
+        function initDeck() {
+            // Καθαρισμός deck (κρατάμε μόνο το "no-more-cards" div)
+            const cards = deck.querySelectorAll('.movie-card');
+            cards.forEach(c => c.remove());
+            document.getElementById('no-more-cards').classList.add('hidden');
+
+            // Δημιουργία καρτών από το τέλος προς την αρχή (για να εμφανίζεται η πρώτη πάνω-πάνω)
+            for (let i = movieData.length - 1; i >= 0; i--) {
+                const movie = movieData[i];
+                const card = document.createElement('div');
+                card.className = "movie-card";
+                card.dataset.id = movie.id;
+                
+                card.innerHTML = `
+                    <img src="${movie.image}" alt="${movie.title}" class="w-full h-full object-cover pointer-events-none">
+                    <div class="card-overlay absolute inset-0 p-6 flex flex-col justify-end">
+                        <div class="flex justify-between items-end mb-2">
+                            <span class="bg-violet-600 text-xs px-2 py-1 rounded-md font-bold">${movie.genre}</span>
+                            <span class="text-yellow-400 font-bold">★ ${movie.rating}</span>
+                        </div>
+                        <h2 class="text-2xl font-black">${movie.title} <span class="text-sm font-normal text-slate-400">(${movie.year})</span></h2>
+                        <p class="text-xs text-slate-300 mt-2 line-clamp-3">${movie.desc}</p>
+                    </div>
+                `;
+                
+                // Event Listeners για Dragging (Mouse & Touch)
+                card.addEventListener('mousedown', dragStart);
+                card.addEventListener('touchstart', dragStart, { passive: true });
+                
+                deck.appendChild(card);
+            }
+            
+            activeIndex = 0;
+            updateCardStack();
+        }
+
+        function updateCardStack() {
+            const cards = deck.querySelectorAll('.movie-card');
+            cards.forEach((card, i) => {
+                // Ανάποδο index (η πάνω κάρτα είναι η τελευταία στο DOM)
+                const revIndex = cards.length - 1 - i;
+                
+                if (revIndex === activeIndex) {
+                    card.style.transform = `translate3d(0, 0, 0) scale(1)`;
+                    card.style.opacity = 1;
+                    card.style.pointerEvents = 'auto';
+                    currentCard = card;
+                } else if (revIndex === activeIndex + 1) {
+                    card.style.transform = `translate3d(0, 15px, -20px) scale(0.95)`;
+                    card.style.opacity = 0.8;
+                    card.style.pointerEvents = 'none';
+                } else if (revIndex === activeIndex + 2) {
+                    card.style.transform = `translate3d(0, 30px, -40px) scale(0.9)`;
+                    card.style.opacity = 0.5;
+                    card.style.pointerEvents = 'none';
+                } else {
+                    card.style.opacity = 0;
+                    card.style.pointerEvents = 'none';
+                }
+            });
+
+            if (activeIndex >= movieData.length) {
+                document.getElementById('no-more-cards').classList.remove('hidden');
+                currentCard = null;
+            }
+        }
+
+        // Drag Handlers
+        function dragStart(e) {
+            if (isDragging) return;
+            isDragging = true;
+            
+            startX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+            currentCard.style.transition = 'none';
+
+            document.addEventListener('mousemove', dragMove);
+            document.addEventListener('mouseup', dragEnd);
+            document.addEventListener('touchmove', dragMove, { passive: false });
+            document.addEventListener('touchend', dragEnd);
+        }
+
+        function dragMove(e) {
+            if (!isDragging) return;
+            
+            currentX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+            const deltaX = currentX - startX;
+            const rotate = deltaX * 0.08; // Ελαφρύ στρίψιμο της κάρτας
+
+            currentCard.style.transform = `translate3d(${deltaX}px, 0, 0) rotate(${rotate}deg)`;
+
+            // Οπτική ένδειξη Like/Dislike (πράσινο ή κόκκινο overlay ανάλογα με το drag)
+            if (deltaX > 50) {
+                currentCard.style.borderColor = 'rgba(74, 222, 128, 0.5)';
+            } else if (deltaX < -50) {
+                currentCard.style.borderColor = 'rgba(248, 113, 113, 0.5)';
+            } else {
+                currentCard.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+            }
+        }
+
+        function dragEnd() {
+            if (!isDragging) return;
+            isDragging = false;
+
+            document.removeEventListener('mousemove', dragMove);
+            document.removeEventListener('mouseup', dragEnd);
+            document.removeEventListener('touchmove', dragMove);
+            document.removeEventListener('touchend', dragEnd);
+
+            const deltaX = currentX - startX;
+            const threshold = 120; // Απόσταση που θεωρείται Swipe
+
+            currentCard.style.transition = 'transform 0.3s ease, opacity 0.3s';
+
+            if (deltaX > threshold) {
+                swipe('right');
+            } else if (deltaX < -threshold) {
+                swipe('left');
+            } else {
+                // Επαναφορά στο κέντρο αν δεν ξεπέρασε το όριο
+                currentCard.style.transform = `translate3d(0, 0, 0) rotate(0deg)`;
+                currentCard.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+            }
+            
+            startX = 0;
+            currentX = 0;
+        }
+
+        function swipe(direction) {
+            const flyOutX = direction === 'right' ? 500 : -500;
+            const rotate = direction === 'right' ? 30 : -30;
+            
+            currentCard.style.transform = `translate3d(${flyOutX}px, 0, 0) rotate(${rotate}deg)`;
+            currentCard.style.opacity = 0;
+
+            const movie = movieData[activeIndex];
+            if (direction === 'right') {
+                addToWatchlist(movie);
+            }
+
+            activeIndex++;
+            
+            // Περιμένουμε να τελειώσει το animation πριν ανανεώσουμε τη στοίβα
+            setTimeout(() => {
+                updateCardStack();
+            }, 200);
+        }
+
+        // Swipe μέσω των κουμπιών στο κάτω μέρος
+        function swipeButton(direction) {
+            if (!currentCard) return;
+            currentCard.style.transition = 'transform 0.4s ease, opacity 0.4s';
+            swipe(direction);
+        }
+
+        // Watchlist Logic
+        function addToWatchlist(movie) {
+            watchlist.push(movie);
+            updateWatchlistUI();
+        }
+
+        function updateWatchlistUI() {
+            document.getElementById('match-count').textContent = watchlist.length;
+            const list = document.getElementById('matches-list');
+            
+            if (watchlist.length === 0) {
+                list.innerHTML = `<li class="italic text-slate-500">No movies saved yet...</li>`;
+                return;
+            }
+
+            list.innerHTML = watchlist.map(movie => `
+                <li class="flex items-center gap-2 bg-slate-900 p-2 rounded border border-slate-800">
+                    <img src="${movie.image}" class="w-10 h-10 object-cover rounded">
+                    <div class="flex-grow">
+                        <p class="font-bold text-xs">${movie.title}</p>
+                        <p class="text-[10px] text-slate-400">${movie.genre}</p>
+                    </div>
+                    <button onclick="removeFromWatchlist(${movie.id})" class="text-red-500 hover:text-red-400 text-xs px-2">✖</button>
+                </li>
+            `).join('');
+        }
+
+        function removeFromWatchlist(id) {
+            watchlist = watchlist.filter(m => m.id !== id);
+            updateWatchlistUI();
+        }
+
+        function toggleMatches() {
+            const panel = document.getElementById('matches-panel');
+            panel.classList.toggle('scale-0');
+            panel.classList.toggle('scale-100');
+        }
+
+        function resetDeck() {
+            watchlist = [];
+            updateWatchlistUI();
+            initDeck();
+        }
+
+        // Εκκίνηση
+        window.onload = initDeck;
+    </script>
+</body>
+</html>
