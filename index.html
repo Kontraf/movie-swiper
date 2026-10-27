@@ -2,22 +2,33 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#090514">
     <title>🍿 Movie Swiper // Match Your Night</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #090514 100%);
-            overflow: hidden;
-            touch-action: none; /* Αποτρέπει το default scroll στο κινητό κατά το swipe */
+            background: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #090514 100%) fixed;
+            display: flex;
+            flex-direction: column;
+            /* dvh = ύψος που μετράει τη μπάρα του browser στο κινητό (το vh την αγνοεί και κόβει τα κουμπιά) */
+            min-height: 100vh;
+            min-height: 100dvh;
+            padding: calc(env(safe-area-inset-top) + 12px) calc(env(safe-area-inset-right) + 16px)
+                     calc(env(safe-area-inset-bottom) + 12px) calc(env(safe-area-inset-left) + 16px);
+            overflow-x: hidden;
+            overscroll-behavior: none;
+            touch-action: manipulation; /* χωρίς καθυστέρηση και double-tap zoom στα κουμπιά */
+            -webkit-tap-highlight-color: transparent;
         }
-        
-        /* Εφέ στοίβας (Card Stack Effect) */
+
+        /* Η κάρτα προσαρμόζεται στην οθόνη: δεν ξεπερνά το πλάτος και αφήνει χώρο για τα κουμπιά */
         .card-container {
+            --card-h: min(500px, calc(100dvh - 255px), calc((100vw - 32px) * 1.5));
             position: relative;
-            width: 320px;
-            height: 480px;
+            height: max(var(--card-h), 240px);
+            width: calc(max(var(--card-h), 240px) / 1.5);
             perspective: 1000px;
         }
 
@@ -34,6 +45,8 @@
             transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
             cursor: grab;
             user-select: none;
+            -webkit-user-select: none;
+            touch-action: pan-y; /* το οριζόντιο swipe το χειρίζεται ο κώδικας, το κάθετο scroll μένει στον browser */
         }
 
         .movie-card:active {
@@ -41,19 +54,31 @@
         }
 
         /* Gradient overlay πάνω από την αφίσα για να διαβάζεται το κείμενο */
+        #matches-panel { touch-action: pan-y; }
+        #matches-list { overscroll-behavior: contain; }
+
+        /* Σε οριζόντια θέση (χαμηλή οθόνη) τα κουμπιά πάνε δίπλα στην κάρτα */
+        @media (orientation: landscape) and (max-height: 500px) {
+            body { flex-direction: row; align-items: center; justify-content: center; gap: 24px; }
+            body > header { display: none; }
+            body > main { flex: 0 0 auto; padding-block: 0 !important; }
+            body > .controls { flex: 0 0 auto; }
+            .card-container { --card-h: calc(100dvh - 64px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+        }
+
         .card-overlay {
             background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.4) 40%, transparent 100%);
         }
     </style>
 </head>
-<body class="text-white min-h-screen flex flex-col justify-between p-6">
+<body class="text-white">
 
-    <header class="text-center pt-4">
-        <h1 class="text-3xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-400">🍿 MOVIE SWIPER</h1>
+    <header class="text-center">
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-400">🍿 MOVIE SWIPER</h1>
         <p class="text-xs text-slate-400 mt-1 uppercase tracking-widest">Swipe right for YES, left for NO</p>
     </header>
 
-    <main class="flex-grow flex items-center justify-center">
+    <main class="flex-1 min-h-0 flex items-center justify-center py-3">
         <div class="card-container" id="deck">
             <p id="deck-status" class="hidden text-center text-slate-400 p-6" role="status">Loading movies…</p>
             <div id="no-more-cards" class="hidden text-center p-6">
@@ -66,32 +91,31 @@
         </div>
     </main>
 
-    <p id="source-note" class="text-center text-[10px] text-slate-500 px-6 pb-2"></p>
-
-    <footer class="flex justify-center gap-6 pb-6 z-10">
-        <button onclick="swipeButton('left')" class="w-16 h-16 rounded-full bg-slate-900/80 border border-red-500/30 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition shadow-lg text-2xl">
-            ✖
+    <div class="controls flex flex-col items-center gap-2">
+        <div class="flex justify-center gap-8">
+            <button onclick="swipeButton('left')" aria-label="Skip this movie" class="w-16 h-16 rounded-full bg-slate-900/80 border border-red-500/30 flex items-center justify-center text-red-500 active:bg-red-500 active:text-white hover:bg-red-500 hover:text-white transition shadow-lg text-2xl">
+                ✖
+            </button>
+            <button onclick="swipeButton('right')" aria-label="Save to watchlist" class="w-16 h-16 rounded-full bg-slate-900/80 border border-green-500/30 flex items-center justify-center text-green-400 active:bg-green-500 active:text-white hover:bg-green-500 hover:text-white transition shadow-lg text-2xl">
+                ❤
+            </button>
+        </div>
+        <button onclick="toggleMatches()" class="bg-violet-600 text-white font-semibold h-11 px-5 rounded-full text-sm shadow-lg active:bg-violet-700 hover:bg-violet-700 transition">
+            📂 View Watchlist (<span id="match-count">0</span>)
         </button>
-        <button onclick="swipeButton('right')" class="w-16 h-16 rounded-full bg-slate-900/80 border border-green-500/30 flex items-center justify-center text-green-400 hover:bg-green-500 hover:text-white transition shadow-lg text-2xl">
-            ❤
-        </button>
-    </footer>
+        <p id="source-note" class="text-center text-[10px] leading-tight text-slate-500 px-2"></p>
+    </div>
 
-    <div id="matches-panel" class="fixed bottom-24 left-1/2 -translate-x-1/2 bg-slate-950/95 border border-violet-500/30 rounded-xl p-4 w-80 shadow-2xl transition-all transform scale-0 origin-bottom">
+    <div id="matches-panel" class="fixed left-1/2 -translate-x-1/2 w-[min(92vw,24rem)] bg-slate-950/95 border border-violet-500/30 rounded-xl p-4 shadow-2xl transition-all transform scale-0 origin-bottom z-20" style="bottom: calc(env(safe-area-inset-bottom) + 16px)">
         <h3 class="font-bold text-violet-400 border-b border-slate-800 pb-2 mb-2 flex justify-between items-center">
             <span>💚 Your Watchlist</span>
-            <button onclick="toggleMatches()" class="text-xs text-slate-500 hover:text-white">Close</button>
+            <button onclick="toggleMatches()" class="text-sm text-slate-300 hover:text-white px-3 h-10 -mr-2">Close</button>
         </h3>
-        <ul id="matches-list" class="max-h-40 overflow-y-auto space-y-2 text-sm text-slate-300">
+        <ul id="matches-list" class="max-h-[45dvh] overflow-y-auto space-y-2 text-sm text-slate-300">
             <li class="italic text-slate-500">No movies saved yet...</li>
         </ul>
     </div>
 
-    <div class="fixed bottom-6 right-6">
-        <button onclick="toggleMatches()" class="bg-violet-600 text-white font-semibold py-2 px-4 rounded-full text-xs shadow-lg hover:bg-violet-700 transition">
-            📂 View Watchlist (<span id="match-count">0</span>)
-        </button>
-    </div>
 
     <script>
         // Λίστα ταινιών. Κάθε γύρος διαλέγει τυχαία ταινίες από εδώ.
@@ -254,7 +278,7 @@
 
         // Αφίσα: πραγματική εικόνα όταν υπάρχει, αλλιώς χρώμα και emoji
         function posterHtml(movie, sizeClasses) {
-            const fallback = `<div class="absolute inset-0 flex items-center justify-center ${sizeClasses}" style="background:${posterBg(movie)}" aria-hidden="true">${genreEmoji(movie)}</div>`;
+            const fallback = `<div class="absolute inset-0 flex justify-center ${sizeClasses}" style="background:${posterBg(movie)}" aria-hidden="true">${genreEmoji(movie)}</div>`;
             if (!movie.poster) return fallback;
             return fallback + `<img src="${esc(movie.poster)}" alt="" loading="lazy" onerror="this.remove()" class="absolute inset-0 w-full h-full object-cover pointer-events-none">`;
         }
@@ -318,7 +342,7 @@
                 card.dataset.id = String(movie.id);
                 
                 card.innerHTML = `
-                    ${posterHtml(movie, 'text-8xl')}
+                    ${posterHtml(movie, 'items-start pt-[12%] text-7xl')}
                     <div class="card-overlay absolute inset-0 p-6 flex flex-col justify-end">
                         <div class="flex justify-between items-end mb-2">
                             <span class="bg-violet-600 text-xs px-2 py-1 rounded-md font-bold">${esc(movie.genre)}</span>
@@ -379,17 +403,26 @@
         }
 
         // Drag Handlers
+        let lastTouchTime = 0;
+
         function dragStart(e) {
-            if (isDragging) return;
+            if (isDragging || !currentCard) return;
+            if (e.type === 'touchstart') {
+                lastTouchTime = Date.now();
+            } else if (Date.now() - lastTouchTime < 700) {
+                return; // mouse event που προκαλεί ο browser μετά από touch
+            }
             isDragging = true;
-            
+
             startX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+            currentX = startX; // χωρίς αυτό ένα απλό πάτημα μετρούσε ως μεγάλο swipe
             currentCard.style.transition = 'none';
 
             document.addEventListener('mousemove', dragMove);
             document.addEventListener('mouseup', dragEnd);
             document.addEventListener('touchmove', dragMove, { passive: false });
             document.addEventListener('touchend', dragEnd);
+            document.addEventListener('touchcancel', dragEnd);
         }
 
         function dragMove(e) {
@@ -419,9 +452,10 @@
             document.removeEventListener('mouseup', dragEnd);
             document.removeEventListener('touchmove', dragMove);
             document.removeEventListener('touchend', dragEnd);
+            document.removeEventListener('touchcancel', dragEnd);
 
             const deltaX = currentX - startX;
-            const threshold = 120; // Απόσταση που θεωρείται Swipe
+            const threshold = Math.min(120, window.innerWidth * 0.25); // Απόσταση που θεωρείται Swipe
 
             currentCard.style.transition = 'transform 0.3s ease, opacity 0.3s';
 
@@ -486,12 +520,12 @@
 
             list.innerHTML = watchlist.map(movie => `
                 <li class="flex items-center gap-2 bg-slate-900 p-2 rounded border border-slate-800">
-                    <div class="relative w-10 h-10 rounded overflow-hidden shrink-0 text-lg">${posterHtml(movie, 'text-lg')}</div>
+                    <div class="relative w-10 h-10 rounded overflow-hidden shrink-0 text-lg">${posterHtml(movie, 'items-center text-lg')}</div>
                     <div class="flex-grow">
                         <p class="font-bold text-xs">${esc(movie.title)}</p>
                         <p class="text-[10px] text-slate-400">${esc(movie.genre)}</p>
                     </div>
-                    <button onclick="removeFromWatchlist('${esc(movie.id)}')" class="text-red-500 hover:text-red-400 text-xs px-2">✖</button>
+                    <button onclick="removeFromWatchlist('${esc(movie.id)}')" aria-label="Remove ${esc(movie.title)}" class="text-red-500 hover:text-red-400 text-sm w-11 h-11 shrink-0">✖</button>
                 </li>
             `).join('');
         }
