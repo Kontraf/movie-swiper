@@ -55,15 +55,18 @@
 
     <main class="flex-grow flex items-center justify-center">
         <div class="card-container" id="deck">
+            <p id="deck-status" class="hidden text-center text-slate-400 p-6" role="status">Loading movies…</p>
             <div id="no-more-cards" class="hidden text-center p-6">
                 <p class="text-xl font-bold mb-2">🎉 That's all for now!</p>
-                <p class="text-sm text-slate-400 mb-4">You have swiped through all movies.</p>
+                <p class="text-sm text-slate-400 mb-4">That is the end of this round. Your watchlist is saved.</p>
                 <button onclick="resetDeck()" class="bg-violet-600 hover:bg-violet-700 text-white font-bold py-2 px-6 rounded-full transition">
-                    Start Over
+                    Show more movies
                 </button>
             </div>
         </div>
     </main>
+
+    <p id="source-note" class="text-center text-[10px] text-slate-500 px-6 pb-2"></p>
 
     <footer class="flex justify-center gap-6 pb-6 z-10">
         <button onclick="swipeButton('left')" class="w-16 h-16 rounded-full bg-slate-900/80 border border-red-500/30 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition shadow-lg text-2xl">
@@ -91,23 +94,183 @@
     </div>
 
     <script>
-        // Mock Data Ταινιών (Fallback σε περίπτωση που δεν έχουμε API)
+        // Λίστα ταινιών. Κάθε γύρος διαλέγει τυχαία ταινίες από εδώ.
         const movieData = [
-            { id: 1, title: "Dune: Part Two", year: "2024", rating: "8.6", genre: "Sci-Fi / Adventure", image: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500&auto=format&fit=crop&q=60", desc: "Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family." },
-            { id: 2, title: "Oppenheimer", year: "2023", rating: "8.9", genre: "Biography / Drama", image: "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=500&auto=format&fit=crop&q=60", desc: "The story of American scientist J. Robert Oppenheimer and his role in the development of the atomic bomb." },
-            { id: 3, title: "Spider-Man: Across the Spider-Verse", year: "2023", rating: "8.6", genre: "Animation / Action", image: "https://images.unsplash.com/photo-1635805737707-575885ab0820?w=500&auto=format&fit=crop&q=60", desc: "Miles Morales catapults across the Multiverse, where he encounters a team of Spider-People charged with protecting its very existence." },
-            { id: 4, title: "The Dark Knight", year: "2008", rating: "9.0", genre: "Action / Crime", image: "https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?w=500&auto=format&fit=crop&q=60", desc: "When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman must accept one of the greatest psychological and physical tests." },
-            { id: 5, title: "Interstellar", year: "2014", rating: "8.7", genre: "Sci-Fi / Drama", image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=500&auto=format&fit=crop&q=60", desc: "A team of explorers travel through a wormhole in space in an attempt to ensure humanity's survival." }
+            {"id": 1, "title": "Dune: Part Two", "year": "2024", "genre": "Sci-Fi / Adventure", "desc": "Paul Atreides joins the Fremen and seeks revenge against those who destroyed his family."},
+            {"id": 2, "title": "Oppenheimer", "year": "2023", "genre": "Biography / Drama", "desc": "The story of J. Robert Oppenheimer and the creation of the atomic bomb."},
+            {"id": 3, "title": "Spider-Man: Across the Spider-Verse", "year": "2023", "genre": "Animation / Action", "desc": "Miles Morales travels across the multiverse and meets a team of Spider-People."},
+            {"id": 4, "title": "The Dark Knight", "year": "2008", "genre": "Action / Crime", "desc": "Batman faces the Joker, a criminal mastermind who pushes Gotham into chaos."},
+            {"id": 5, "title": "Interstellar", "year": "2014", "genre": "Sci-Fi / Drama", "desc": "Explorers travel through a wormhole in search of a new home for humanity."},
+            {"id": 6, "title": "Inception", "year": "2010", "genre": "Sci-Fi / Thriller", "desc": "A thief who steals secrets through dreams is offered a chance to plant an idea instead."},
+            {"id": 7, "title": "The Matrix", "year": "1999", "genre": "Sci-Fi / Action", "desc": "A hacker learns that reality is a simulation and joins a rebellion against its controllers."},
+            {"id": 8, "title": "Parasite", "year": "2019", "genre": "Thriller / Drama", "desc": "A poor family schemes its way into the lives of a wealthy household."},
+            {"id": 9, "title": "Pulp Fiction", "year": "1994", "genre": "Crime / Drama", "desc": "Interwoven stories of hitmen, a boxer and a gangster's wife in Los Angeles."},
+            {"id": 10, "title": "The Shawshank Redemption", "year": "1994", "genre": "Drama", "desc": "A banker wrongly convicted of murder forms a lasting friendship in prison."},
+            {"id": 11, "title": "Forrest Gump", "year": "1994", "genre": "Drama / Romance", "desc": "A kind-hearted man unknowingly takes part in several decades of American history."},
+            {"id": 12, "title": "Gladiator", "year": "2000", "genre": "Action / Drama", "desc": "A betrayed Roman general fights as a gladiator to avenge his family."},
+            {"id": 13, "title": "Whiplash", "year": "2014", "genre": "Drama / Music", "desc": "A young drummer is pushed to his limits by an abusive instructor."},
+            {"id": 14, "title": "La La Land", "year": "2016", "genre": "Musical / Romance", "desc": "A jazz pianist and an aspiring actress fall in love while chasing their dreams in Los Angeles."},
+            {"id": 15, "title": "Mad Max: Fury Road", "year": "2015", "genre": "Action / Sci-Fi", "desc": "Furiosa and Max flee a tyrant across a desert wasteland."},
+            {"id": 16, "title": "Blade Runner 2049", "year": "2017", "genre": "Sci-Fi / Drama", "desc": "A new blade runner uncovers a secret that could upend what is left of society."},
+            {"id": 17, "title": "Joker", "year": "2019", "genre": "Crime / Drama", "desc": "A failed comedian in Gotham slowly turns into the Joker."},
+            {"id": 18, "title": "The Godfather", "year": "1972", "genre": "Crime / Drama", "desc": "The aging head of a crime family hands control to his reluctant son."},
+            {"id": 19, "title": "Fight Club", "year": "1999", "genre": "Drama / Thriller", "desc": "An insomniac office worker and a soap salesman start an underground fight club."},
+            {"id": 20, "title": "Spirited Away", "year": "2001", "genre": "Animation / Fantasy", "desc": "A girl enters a world of spirits and must work to free her parents."},
+            {"id": 21, "title": "Toy Story", "year": "1995", "genre": "Animation / Family", "desc": "A cowboy doll feels threatened when a new space ranger toy arrives."},
+            {"id": 22, "title": "Finding Nemo", "year": "2003", "genre": "Animation / Family", "desc": "A clownfish crosses the ocean to find his lost son."},
+            {"id": 23, "title": "The Lion King", "year": "1994", "genre": "Animation / Family", "desc": "A lion cub flees after his father's death and later returns to claim his kingdom."},
+            {"id": 24, "title": "Avengers: Endgame", "year": "2019", "genre": "Action / Sci-Fi", "desc": "The Avengers assemble once more to undo the damage caused by Thanos."},
+            {"id": 25, "title": "Top Gun: Maverick", "year": "2022", "genre": "Action / Drama", "desc": "Maverick trains a new generation of pilots for a dangerous mission."},
+            {"id": 26, "title": "Everything Everywhere All at Once", "year": "2022", "genre": "Sci-Fi / Comedy", "desc": "A laundromat owner is pulled into the multiverse to save her family and the world."},
+            {"id": 27, "title": "The Grand Budapest Hotel", "year": "2014", "genre": "Comedy / Adventure", "desc": "A legendary concierge and his lobby boy get caught up in a theft and a family fortune."},
+            {"id": 28, "title": "Get Out", "year": "2017", "genre": "Horror / Thriller", "desc": "A young man visiting his girlfriend's family discovers a disturbing secret."},
+            {"id": 29, "title": "The Silence of the Lambs", "year": "1991", "genre": "Thriller / Crime", "desc": "A young FBI trainee seeks help from an imprisoned killer to catch another."},
+            {"id": 30, "title": "Se7en", "year": "1995", "genre": "Crime / Thriller", "desc": "Two detectives hunt a serial killer who uses the seven deadly sins as his guide."},
+            {"id": 31, "title": "Back to the Future", "year": "1985", "genre": "Sci-Fi / Comedy", "desc": "A teenager is sent back to 1955 in a time-travelling car."},
+            {"id": 32, "title": "Jurassic Park", "year": "1993", "genre": "Sci-Fi / Adventure", "desc": "A theme park of cloned dinosaurs turns dangerous."},
+            {"id": 33, "title": "Titanic", "year": "1997", "genre": "Romance / Drama", "desc": "A romance between two passengers aboard the doomed ocean liner."},
+            {"id": 34, "title": "The Prestige", "year": "2006", "genre": "Mystery / Drama", "desc": "Two rival magicians in Victorian London compete to create the ultimate illusion."},
+            {"id": 35, "title": "Coco", "year": "2017", "genre": "Animation / Family", "desc": "A boy enters the Land of the Dead to learn about his family's history."},
+            {"id": 36, "title": "Knives Out", "year": "2019", "genre": "Mystery / Comedy", "desc": "A detective investigates the death of a wealthy crime novelist."},
+            {"id": 37, "title": "Django Unchained", "year": "2012", "genre": "Western / Drama", "desc": "A freed slave and a bounty hunter set out to rescue his wife."},
+            {"id": 38, "title": "1917", "year": "2019", "genre": "War / Drama", "desc": "Two soldiers race across enemy territory to deliver a message that could save 1,600 men."},
+            {"id": 39, "title": "Dunkirk", "year": "2017", "genre": "War / Thriller", "desc": "The evacuation of Allied soldiers from the beaches of Dunkirk."},
+            {"id": 40, "title": "The Social Network", "year": "2010", "genre": "Drama / Biography", "desc": "The founding of Facebook and the legal fight that followed."},
+            {"id": 41, "title": "Gravity", "year": "2013", "genre": "Sci-Fi / Thriller", "desc": "Two astronauts struggle to survive after their shuttle is destroyed."},
+            {"id": 42, "title": "Pan's Labyrinth", "year": "2006", "genre": "Fantasy / Drama", "desc": "In 1944 Spain, a girl discovers a fantastical underworld."},
+            {"id": 43, "title": "Amélie", "year": "2001", "genre": "Romance / Comedy", "desc": "A shy Parisian waitress secretly improves the lives of those around her."},
+            {"id": 44, "title": "Ratatouille", "year": "2007", "genre": "Animation / Family", "desc": "A rat with a talent for cooking helps a young chef in Paris."},
+            {"id": 45, "title": "Black Panther", "year": "2018", "genre": "Action / Adventure", "desc": "T'Challa returns to Wakanda to take the throne and faces a challenger."},
         ];
 
+        // ---- Online πηγή ταινιών: TMDB (themoviedb.org) ----
+        // Βάλε εδώ το δωρεάν API key σου (v3) από https://www.themoviedb.org/settings/api
+        // Όσο είναι κενό, ή αν η TMDB δεν απαντά, χρησιμοποιείται η ενσωματωμένη λίστα.
+        // Προσοχή: το κλειδί φαίνεται σε όποιον ανοίξει τον κώδικα της σελίδας.
+        const TMDB_API_KEY = '';
+        const TMDB_MAX_PAGE = 20; // τυχαία σελίδα 1 έως 20 των δημοφιλών ταινιών
+
+        const TMDB_GENRES = {
+            28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime', 99: 'Documentary',
+            18: 'Drama', 10751: 'Family', 14: 'Fantasy', 36: 'History', 27: 'Horror', 10402: 'Music',
+            9648: 'Mystery', 10749: 'Romance', 878: 'Sci-Fi', 10770: 'TV Movie', 53: 'Thriller',
+            10752: 'War', 37: 'Western'
+        };
+
+        const ROUND_SIZE = 12;
+        const seenIds = new Set();   // ταινίες που έχουν ήδη εμφανιστεί σε αυτή την επίσκεψη
+        let usingTmdb = false;
+        let roundToken = 0;          // αγνοεί απαντήσεις από παλιότερα αιτήματα
         let activeIndex = 0;
+        let deckMovies = []; // οι ταινίες του τρέχοντος γύρου
+
+        const GENRE_EMOJI = {
+            'Sci-Fi': '🚀', 'Action': '💥', 'Crime': '🕵️', 'Drama': '🎭', 'Animation': '✨', 'Thriller': '🔍',
+            'Comedy': '😄', 'Horror': '👻', 'Romance': '❤️', 'Musical': '🎵', 'Music': '🎵', 'War': '🪖',
+            'Fantasy': '🧙', 'Western': '🤠', 'Mystery': '🔎', 'Biography': '📖', 'Adventure': '🧭', 'Family': '🏠'
+        };
+
+        function genreEmoji(movie) {
+            const first = movie.genre.split(' / ')[0];
+            return GENRE_EMOJI[first] || '🎬';
+        }
+
+        // Χρώμα "αφίσας" από τον τίτλο, ώστε κάθε ταινία να έχει σταθερό χρώμα
+        function posterBg(movie) {
+            let h = 0;
+            for (const ch of movie.title) h = (h * 31 + ch.charCodeAt(0)) % 360;
+            return `linear-gradient(150deg, hsl(${h}, 65%, 38%), hsl(${(h + 45) % 360}, 70%, 14%))`;
+        }
+
+        // Fisher-Yates shuffle
+        function shuffled(list) {
+            const a = list.slice();
+            for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+        }
+
+        // Ταινίες από την ενσωματωμένη λίστα (εφεδρική πηγή)
+        function pickLocalRound() {
+            const saved = new Set(watchlist.map(m => String(m.id)));
+            let pool = movieData.filter(m => !saved.has(String(m.id)) && !seenIds.has(String(m.id)));
+            if (pool.length < ROUND_SIZE) {
+                // τελείωσαν οι καινούριες: ξαναρχίζουμε τον κύκλο, πάντα χωρίς όσες έχεις σώσει
+                seenIds.clear();
+                pool = movieData.filter(m => !saved.has(String(m.id)));
+            }
+            return shuffled(pool).slice(0, ROUND_SIZE);
+        }
+
+        // Ταινίες από την TMDB: τυχαία σελίδα δημοφιλών ταινιών
+        async function fetchTmdbRound() {
+            const page = 1 + Math.floor(Math.random() * TMDB_MAX_PAGE);
+            const url = 'https://api.themoviedb.org/3/movie/popular?api_key=' + encodeURIComponent(TMDB_API_KEY) +
+                '&language=en-US&include_adult=false&page=' + page;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('TMDB status ' + res.status);
+            const data = await res.json();
+            if (!data || !Array.isArray(data.results)) throw new Error('TMDB bad response');
+
+            const saved = new Set(watchlist.map(m => String(m.id)));
+            const movies = data.results
+                .filter(m => m.poster_path && m.overview)
+                .map(m => ({
+                    id: 'tmdb-' + m.id,
+                    title: m.title,
+                    year: (m.release_date || '').slice(0, 4) || '—',
+                    genre: (m.genre_ids || []).map(g => TMDB_GENRES[g]).filter(Boolean).slice(0, 2).join(' / ') || 'Movie',
+                    desc: m.overview,
+                    poster: 'https://image.tmdb.org/t/p/w500' + m.poster_path
+                }))
+                .filter(m => !saved.has(m.id) && !seenIds.has(m.id));
+            if (movies.length === 0) throw new Error('TMDB returned no new movies');
+            return shuffled(movies).slice(0, ROUND_SIZE);
+        }
+
+        // Διαλέγει τον νέο γύρο: πρώτα online, αλλιώς η ενσωματωμένη λίστα
+        async function pickRound() {
+            if (TMDB_API_KEY) {
+                try {
+                    const movies = await fetchTmdbRound();
+                    usingTmdb = true;
+                    return movies;
+                } catch (e) {
+                    console.error('TMDB unavailable, using the built-in list:', e);
+                }
+            }
+            usingTmdb = false;
+            return pickLocalRound();
+        }
+
+        // Escape για κείμενο που έρχεται από το internet
+        function esc(text) {
+            return String(text ?? '')
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        // Αφίσα: πραγματική εικόνα όταν υπάρχει, αλλιώς χρώμα και emoji
+        function posterHtml(movie, sizeClasses) {
+            const fallback = `<div class="absolute inset-0 flex items-center justify-center ${sizeClasses}" style="background:${posterBg(movie)}" aria-hidden="true">${genreEmoji(movie)}</div>`;
+            if (!movie.poster) return fallback;
+            return fallback + `<img src="${esc(movie.poster)}" alt="" loading="lazy" onerror="this.remove()" class="absolute inset-0 w-full h-full object-cover pointer-events-none">`;
+        }
         // Η watchlist αποθηκεύεται στο κινητό ώστε να μένει μετά από ανανέωση της σελίδας
         const WATCHLIST_KEY = 'movie-swiper-watchlist';
 
         function loadWatchlist() {
             try {
-                const ids = JSON.parse(localStorage.getItem(WATCHLIST_KEY));
-                return Array.isArray(ids) ? movieData.filter(m => ids.includes(m.id)) : [];
+                const saved = JSON.parse(localStorage.getItem(WATCHLIST_KEY));
+                if (!Array.isArray(saved)) return [];
+                return saved.map(item => {
+                    // παλιά μορφή: μόνο αριθμός id της ενσωματωμένης λίστας
+                    if (typeof item === 'number') return movieData.find(m => m.id === item);
+                    // νέα μορφή: ολόκληρη η ταινία
+                    return item && item.id && item.title ? item : null;
+                }).filter(Boolean);
             } catch (e) {
                 return [];
             }
@@ -115,7 +278,7 @@
 
         function saveWatchlist() {
             try {
-                localStorage.setItem(WATCHLIST_KEY, JSON.stringify(watchlist.map(m => m.id)));
+                localStorage.setItem(WATCHLIST_KEY, JSON.stringify(watchlist));
             } catch (e) { /* χωρίς αποθήκευση σε ιδιωτική περιήγηση */ }
         }
 
@@ -127,28 +290,41 @@
 
         const deck = document.getElementById('deck');
 
-        function initDeck() {
-            // Καθαρισμός deck (κρατάμε μόνο το "no-more-cards" div)
+        async function initDeck() {
+            // Καθαρισμός deck (κρατάμε μόνο τα "no-more-cards" και "deck-status")
             const cards = deck.querySelectorAll('.movie-card');
             cards.forEach(c => c.remove());
             document.getElementById('no-more-cards').classList.add('hidden');
+            currentCard = null;
+            deckMovies = [];
+            activeIndex = 0;
+
+            const token = ++roundToken;
+            const status = document.getElementById('deck-status');
+            status.classList.remove('hidden');
+            const movies = await pickRound();
+            if (token !== roundToken) return; // ξεκίνησε νεότερο αίτημα
+            status.classList.add('hidden');
+
+            deckMovies = movies;
+            deckMovies.forEach(m => seenIds.add(String(m.id)));
+            updateSourceNote();
 
             // Δημιουργία καρτών από το τέλος προς την αρχή (για να εμφανίζεται η πρώτη πάνω-πάνω)
-            for (let i = movieData.length - 1; i >= 0; i--) {
-                const movie = movieData[i];
+            for (let i = deckMovies.length - 1; i >= 0; i--) {
+                const movie = deckMovies[i];
                 const card = document.createElement('div');
                 card.className = "movie-card";
-                card.dataset.id = movie.id;
+                card.dataset.id = String(movie.id);
                 
                 card.innerHTML = `
-                    <img src="${movie.image}" alt="${movie.title}" onerror="this.style.visibility='hidden'" class="w-full h-full object-cover pointer-events-none">
+                    ${posterHtml(movie, 'text-8xl')}
                     <div class="card-overlay absolute inset-0 p-6 flex flex-col justify-end">
                         <div class="flex justify-between items-end mb-2">
-                            <span class="bg-violet-600 text-xs px-2 py-1 rounded-md font-bold">${movie.genre}</span>
-                            <span class="text-yellow-400 font-bold">★ ${movie.rating}</span>
+                            <span class="bg-violet-600 text-xs px-2 py-1 rounded-md font-bold">${esc(movie.genre)}</span>
                         </div>
-                        <h2 class="text-2xl font-black">${movie.title} <span class="text-sm font-normal text-slate-400">(${movie.year})</span></h2>
-                        <p class="text-xs text-slate-300 mt-2 line-clamp-3">${movie.desc}</p>
+                        <h2 class="text-2xl font-black">${esc(movie.title)} <span class="text-sm font-normal text-slate-400">(${esc(movie.year)})</span></h2>
+                        <p class="text-xs text-slate-300 mt-2 line-clamp-3">${esc(movie.desc)}</p>
                     </div>
                 `;
                 
@@ -161,6 +337,14 @@
             
             activeIndex = 0;
             updateCardStack();
+        }
+
+        // Ένδειξη πηγής. Η TMDB ζητά αναφορά όταν χρησιμοποιείται το API της.
+        function updateSourceNote() {
+            const note = document.getElementById('source-note');
+            note.textContent = usingTmdb
+                ? 'This product uses the TMDB API but is not endorsed or certified by TMDB.'
+                : 'Showing the built-in movie list.';
         }
 
         function updateCardStack() {
@@ -188,7 +372,7 @@
                 }
             });
 
-            if (activeIndex >= movieData.length) {
+            if (activeIndex >= deckMovies.length) {
                 document.getElementById('no-more-cards').classList.remove('hidden');
                 currentCard = null;
             }
@@ -262,7 +446,7 @@
             currentCard.style.transform = `translate3d(${flyOutX}px, 0, 0) rotate(${rotate}deg)`;
             currentCard.style.opacity = 0;
 
-            const movie = movieData[activeIndex];
+            const movie = deckMovies[activeIndex];
             if (direction === 'right') {
                 addToWatchlist(movie);
             }
@@ -284,7 +468,7 @@
 
         // Watchlist Logic
         function addToWatchlist(movie) {
-            if (!watchlist.some(m => m.id === movie.id)) {
+            if (movie && !watchlist.some(m => String(m.id) === String(movie.id))) {
                 watchlist.push(movie);
                 saveWatchlist();
             }
@@ -302,18 +486,18 @@
 
             list.innerHTML = watchlist.map(movie => `
                 <li class="flex items-center gap-2 bg-slate-900 p-2 rounded border border-slate-800">
-                    <img src="${movie.image}" alt="" onerror="this.style.visibility='hidden'" class="w-10 h-10 object-cover rounded">
+                    <div class="relative w-10 h-10 rounded overflow-hidden shrink-0 text-lg">${posterHtml(movie, 'text-lg')}</div>
                     <div class="flex-grow">
-                        <p class="font-bold text-xs">${movie.title}</p>
-                        <p class="text-[10px] text-slate-400">${movie.genre}</p>
+                        <p class="font-bold text-xs">${esc(movie.title)}</p>
+                        <p class="text-[10px] text-slate-400">${esc(movie.genre)}</p>
                     </div>
-                    <button onclick="removeFromWatchlist(${movie.id})" class="text-red-500 hover:text-red-400 text-xs px-2">✖</button>
+                    <button onclick="removeFromWatchlist('${esc(movie.id)}')" class="text-red-500 hover:text-red-400 text-xs px-2">✖</button>
                 </li>
             `).join('');
         }
 
         function removeFromWatchlist(id) {
-            watchlist = watchlist.filter(m => m.id !== id);
+            watchlist = watchlist.filter(m => String(m.id) !== String(id));
             saveWatchlist();
             updateWatchlistUI();
         }
@@ -324,10 +508,8 @@
             panel.classList.toggle('scale-100');
         }
 
+        // Νέος γύρος με άλλες τυχαίες ταινίες. Η watchlist μένει.
         function resetDeck() {
-            watchlist = [];
-            saveWatchlist();
-            updateWatchlistUI();
             initDeck();
         }
 
