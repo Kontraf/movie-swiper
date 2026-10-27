@@ -7,28 +7,35 @@
     <title>🍿 Movie Swiper // Match Your Night</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        html {
+            height: 100%;
+            overflow: hidden;
+            background: #090514; /* ό,τι τυχόν μείνει ακάλυπτο είναι σκούρο, όχι λευκό */
+        }
+
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #090514 100%) fixed;
+            background: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #090514 100%);
             display: flex;
             flex-direction: column;
-            /* dvh = ύψος που μετράει τη μπάρα του browser στο κινητό (το vh την αγνοεί και κόβει τα κουμπιά) */
-            min-height: 100vh;
-            min-height: 100dvh;
+            /* Καρφωμένο στην ορατή οθόνη: οι κάρτες που πετιούνται στο πλάι δεν μπορούν να
+               μεγαλώσουν τη σελίδα (αυτό έκανε το κινητό να κάνει zoom out μετά από λίγα swipes) */
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
             padding: calc(env(safe-area-inset-top) + 12px) calc(env(safe-area-inset-right) + 16px)
                      calc(env(safe-area-inset-bottom) + 12px) calc(env(safe-area-inset-left) + 16px);
-            overflow-x: hidden;
             overscroll-behavior: none;
             touch-action: manipulation; /* χωρίς καθυστέρηση και double-tap zoom στα κουμπιά */
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* Η κάρτα προσαρμόζεται στην οθόνη: δεν ξεπερνά το πλάτος και αφήνει χώρο για τα κουμπιά */
+        /* Η κάρτα παίρνει όσο ύψος περισσεύει από την οθόνη (max 500px) και κρατά αναλογία 2:3 */
         .card-container {
-            --card-h: min(500px, calc(100dvh - 255px), calc((100vw - 32px) * 1.5));
             position: relative;
-            height: max(var(--card-h), 240px);
-            width: calc(max(var(--card-h), 240px) / 1.5);
+            height: min(100%, 500px, calc((100vw - 32px) * 1.5));
+            min-height: 200px;
+            aspect-ratio: 2 / 3;
             perspective: 1000px;
         }
 
@@ -46,7 +53,7 @@
             cursor: grab;
             user-select: none;
             -webkit-user-select: none;
-            touch-action: pan-y; /* το οριζόντιο swipe το χειρίζεται ο κώδικας, το κάθετο scroll μένει στον browser */
+            touch-action: none; /* το swipe το χειρίζεται ο κώδικας· ο browser δεν κάνει scroll ή zoom πάνω στην κάρτα */
         }
 
         .movie-card:active {
@@ -54,6 +61,7 @@
         }
 
         /* Gradient overlay πάνω από την αφίσα για να διαβάζεται το κείμενο */
+        .movie-main { padding-bottom: 36px; } /* χώρος για τις κάρτες της στοίβας που φαίνονται πίσω */
         #matches-panel { touch-action: pan-y; }
         #matches-list { overscroll-behavior: contain; }
 
@@ -61,9 +69,9 @@
         @media (orientation: landscape) and (max-height: 500px) {
             body { flex-direction: row; align-items: center; justify-content: center; gap: 24px; }
             body > header { display: none; }
-            body > main { flex: 0 0 auto; padding-block: 0 !important; }
+            body > main { flex: 0 0 auto; align-self: stretch; padding: 0 !important; }
             body > .controls { flex: 0 0 auto; }
-            .card-container { --card-h: calc(100dvh - 64px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+            .card-container { height: calc(100% - 52px); min-height: 0; }
         }
 
         .card-overlay {
@@ -78,7 +86,7 @@
         <p class="text-xs text-slate-400 mt-1 uppercase tracking-widest">Swipe right for YES, left for NO</p>
     </header>
 
-    <main class="flex-1 min-h-0 flex items-center justify-center py-3">
+    <main class="movie-main flex-1 min-h-0 flex items-center justify-center pt-3">
         <div class="card-container" id="deck">
             <p id="deck-status" class="hidden text-center text-slate-400 p-6" role="status">Loading movies…</p>
             <div id="no-more-cards" class="hidden text-center p-6">
@@ -474,7 +482,7 @@
         }
 
         function swipe(direction) {
-            const flyOutX = direction === 'right' ? 500 : -500;
+            const flyOutX = (direction === 'right' ? 1 : -1) * (window.innerWidth + 120);
             const rotate = direction === 'right' ? 30 : -30;
             
             currentCard.style.transform = `translate3d(${flyOutX}px, 0, 0) rotate(${rotate}deg)`;
