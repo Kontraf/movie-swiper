@@ -101,7 +101,25 @@
         ];
 
         let activeIndex = 0;
-        let watchlist = [];
+        // Η watchlist αποθηκεύεται στο κινητό ώστε να μένει μετά από ανανέωση της σελίδας
+        const WATCHLIST_KEY = 'movie-swiper-watchlist';
+
+        function loadWatchlist() {
+            try {
+                const ids = JSON.parse(localStorage.getItem(WATCHLIST_KEY));
+                return Array.isArray(ids) ? movieData.filter(m => ids.includes(m.id)) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveWatchlist() {
+            try {
+                localStorage.setItem(WATCHLIST_KEY, JSON.stringify(watchlist.map(m => m.id)));
+            } catch (e) { /* χωρίς αποθήκευση σε ιδιωτική περιήγηση */ }
+        }
+
+        let watchlist = loadWatchlist();
         let isDragging = false;
         let startX = 0;
         let currentX = 0;
@@ -123,7 +141,7 @@
                 card.dataset.id = movie.id;
                 
                 card.innerHTML = `
-                    <img src="${movie.image}" alt="${movie.title}" class="w-full h-full object-cover pointer-events-none">
+                    <img src="${movie.image}" alt="${movie.title}" onerror="this.style.visibility='hidden'" class="w-full h-full object-cover pointer-events-none">
                     <div class="card-overlay absolute inset-0 p-6 flex flex-col justify-end">
                         <div class="flex justify-between items-end mb-2">
                             <span class="bg-violet-600 text-xs px-2 py-1 rounded-md font-bold">${movie.genre}</span>
@@ -266,7 +284,10 @@
 
         // Watchlist Logic
         function addToWatchlist(movie) {
-            watchlist.push(movie);
+            if (!watchlist.some(m => m.id === movie.id)) {
+                watchlist.push(movie);
+                saveWatchlist();
+            }
             updateWatchlistUI();
         }
 
@@ -281,7 +302,7 @@
 
             list.innerHTML = watchlist.map(movie => `
                 <li class="flex items-center gap-2 bg-slate-900 p-2 rounded border border-slate-800">
-                    <img src="${movie.image}" class="w-10 h-10 object-cover rounded">
+                    <img src="${movie.image}" alt="" onerror="this.style.visibility='hidden'" class="w-10 h-10 object-cover rounded">
                     <div class="flex-grow">
                         <p class="font-bold text-xs">${movie.title}</p>
                         <p class="text-[10px] text-slate-400">${movie.genre}</p>
@@ -293,6 +314,7 @@
 
         function removeFromWatchlist(id) {
             watchlist = watchlist.filter(m => m.id !== id);
+            saveWatchlist();
             updateWatchlistUI();
         }
 
@@ -304,12 +326,16 @@
 
         function resetDeck() {
             watchlist = [];
+            saveWatchlist();
             updateWatchlistUI();
             initDeck();
         }
 
         // Εκκίνηση
-        window.onload = initDeck;
+        window.onload = () => {
+            updateWatchlistUI();
+            initDeck();
+        };
     </script>
 </body>
 </html>
